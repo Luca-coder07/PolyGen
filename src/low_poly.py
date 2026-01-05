@@ -110,7 +110,7 @@ class LowPolyGenerator:
             points: Array des points
             
         Returns:
-            Tuple RGB (r, g, b)
+            Tuple BGR (b, g, r) - format OpenCV
         """
         # Obtenir les coordonnées du triangle
         tri_points = points[triangle_indices].astype(np.int32)
@@ -119,11 +119,12 @@ class LowPolyGenerator:
         mask = np.zeros((self.height, self.width), dtype=np.uint8)
         cv2.drawContours(mask, [tri_points], 0, 255, -1)
         
-        # Calculer la couleur moyenne dans le triangle
-        colors = self.image_rgb[mask > 0]
+        # Calculer la couleur moyenne dans le triangle (en BGR)
+        colors = self.image[mask > 0]  # Utiliser self.image qui est déjà en BGR
         if len(colors) > 0:
-            mean_color = np.mean(colors, axis=0).astype(np.uint8)
-            return tuple(mean_color)
+            mean_color = np.mean(colors, axis=0).astype(int)
+            # Retourner en tuple pour OpenCV
+            return (int(mean_color[0]), int(mean_color[1]), int(mean_color[2]))
         else:
             return (128, 128, 128)  # Gris par défaut
     
