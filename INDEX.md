@@ -33,6 +33,7 @@
 | **GUI_GUIDE.md** | Guide interface graphique | 10 min |
 | **USAGE_EXAMPLES.md** | Exemples pratiques | 15 min |
 | **BATCH_PROCESSING.md** | Traitement par lots | 10 min |
+| **PRESETS_GUIDE.md** | Gestion des presets | 10 min |
 
 ### 🔧 Pour développeurs
 | Fichier | Description |
@@ -54,6 +55,7 @@ PolyGen/
 ├── 📄 GUI_GUIDE.md               ← Guide GUI
 ├── 📄 USAGE_EXAMPLES.md          ← Exemples d'utilisation
 ├── 📄 BATCH_PROCESSING.md        ← Guide traitement par lots
+├── 📄 PRESETS_GUIDE.md           ← Guide gestion des presets
 ├── 📄 DEVELOPMENT_SUMMARY.md     ← Architecture du projet
 │
 ├── 🐍 main.py                    ← Interface CLI
@@ -139,6 +141,9 @@ git status
 ### 📦 Je veux traiter un dossier complet
 → Allez à `BATCH_PROCESSING.md`
 
+### 💾 Je veux gérer des presets
+→ Allez à `PRESETS_GUIDE.md`
+
 ### 🎨 Je veux comprendre l'algorithme
 → Lisez `DEVELOPMENT_SUMMARY.md` section "Algorithme"
 
@@ -159,11 +164,11 @@ git status
 ## 📊 Statistiques du projet
 
 - **Langage** : Python 3.11
-- **Lignes de code** : ~1200 (src)
-- **Lignes de docs** : ~2500
-- **Commits** : 13
-- **Fonctionnalités** : 15+
-- **Presets** : 5
+- **Lignes de code** : ~1600 (src)
+- **Lignes de docs** : ~3500
+- **Commits** : 16
+- **Fonctionnalités** : 20+
+- **Presets** : 8 (5 classic + 3 hybrid)
 - **Formats export** : 2 (PNG + SVG)
 - **Interfaces** : 3 (CLI + GUI + Batch)
 
@@ -180,7 +185,8 @@ git status
 ✅ Export SVG vectoriel
 ✅ Formes géométriques hybrides
 ✅ Traitement par lots (batch)
-✅ 5 presets optimisés
+✅ Gestion des presets
+✅ 8 presets optimisés
 ✅ Paramètres ajustables
 ✅ Documentation complète
 
@@ -194,6 +200,7 @@ git status
 | Utiliser GUI | GUI_GUIDE.md |
 | Exemples CLI | USAGE_EXAMPLES.md |
 | Batch processing | BATCH_PROCESSING.md |
+| Gérer presets | PRESETS_GUIDE.md |
 | Code source | src/low_poly.py |
 | Architecture | DEVELOPMENT_SUMMARY.md |
 
