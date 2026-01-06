@@ -32,6 +32,7 @@
 | **README.md** | Vue d'ensemble complète | 5 min |
 | **GUI_GUIDE.md** | Guide interface graphique | 10 min |
 | **USAGE_EXAMPLES.md** | Exemples pratiques | 15 min |
+| **BATCH_PROCESSING.md** | Traitement par lots | 10 min |
 
 ### 🔧 Pour développeurs
 | Fichier | Description |
@@ -52,6 +53,7 @@ PolyGen/
 ├── 📄 README.md                  ← Lisez ça en premier!
 ├── 📄 GUI_GUIDE.md               ← Guide GUI
 ├── 📄 USAGE_EXAMPLES.md          ← Exemples d'utilisation
+├── 📄 BATCH_PROCESSING.md        ← Guide traitement par lots
 ├── 📄 DEVELOPMENT_SUMMARY.md     ← Architecture du projet
 │
 ├── 🐍 main.py                    ← Interface CLI
@@ -62,7 +64,8 @@ PolyGen/
 ├── 📁 src/
 │   ├── __init__.py
 │   ├── low_poly.py              ← Moteur principal ⭐
-│   └── svg_export.py            ← Export SVG
+│   ├── svg_export.py            ← Export SVG
+│   └── batch_processor.py        ← Traitement par lots
 │
 ├── 📁 tests/
 │   ├── __init__.py
@@ -101,6 +104,9 @@ pip install -r requirements.txt
 # CLI simple
 python3 main.py input.jpg -o output.png
 
+# Batch (traiter un dossier)
+python3 main.py data/input/photos --batch -d results
+
 # GUI interactive
 ./run_gui.sh
 
@@ -130,6 +136,9 @@ git status
 ### 📸 Je veux convertir une image
 → Allez à `GUI_GUIDE.md` ou lancez `./run_gui.sh`
 
+### 📦 Je veux traiter un dossier complet
+→ Allez à `BATCH_PROCESSING.md`
+
 ### 🎨 Je veux comprendre l'algorithme
 → Lisez `DEVELOPMENT_SUMMARY.md` section "Algorithme"
 
@@ -150,13 +159,13 @@ git status
 ## 📊 Statistiques du projet
 
 - **Langage** : Python 3.11
-- **Lignes de code** : ~800 (src)
-- **Lignes de docs** : ~1500
-- **Commits** : 7
-- **Fonctionnalités** : 10+
+- **Lignes de code** : ~1200 (src)
+- **Lignes de docs** : ~2500
+- **Commits** : 13
+- **Fonctionnalités** : 15+
 - **Presets** : 5
 - **Formats export** : 2 (PNG + SVG)
-- **Interfaces** : 2 (CLI + GUI)
+- **Interfaces** : 3 (CLI + GUI + Batch)
 
 ---
 
@@ -169,6 +178,8 @@ git status
 ✅ Interface GUI Tkinter
 ✅ Export PNG
 ✅ Export SVG vectoriel
+✅ Formes géométriques hybrides
+✅ Traitement par lots (batch)
 ✅ 5 presets optimisés
 ✅ Paramètres ajustables
 ✅ Documentation complète
@@ -182,6 +193,7 @@ git status
 | Démarrer | README.md |
 | Utiliser GUI | GUI_GUIDE.md |
 | Exemples CLI | USAGE_EXAMPLES.md |
+| Batch processing | BATCH_PROCESSING.md |
 | Code source | src/low_poly.py |
 | Architecture | DEVELOPMENT_SUMMARY.md |
 
