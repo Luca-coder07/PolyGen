@@ -10,6 +10,7 @@ import threading
 import os
 from pathlib import Path
 from src.low_poly import LowPolyGenerator
+from src.advanced_shapes import HybridLowPolyGenerator
 
 
 class PolyGenGUI:
@@ -84,6 +85,20 @@ class PolyGenGUI:
         self.enhance_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(params_frame, text="Améliorer couleurs", variable=self.enhance_var).grid(row=4, column=1, sticky=tk.W)
         
+        self.hybrid_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(params_frame, text="Mode Hybride (formes mixtes)", variable=self.hybrid_var, 
+                       command=self.toggle_hybrid_options).grid(row=5, column=1, sticky=tk.W)
+        
+        # Grid Size (pour mode hybride)
+        ttk.Label(params_frame, text="Taille grille (hybride):").grid(row=6, column=0, sticky=tk.W, pady=5)
+        self.grid_size_var = tk.IntVar(value=25)
+        self.grid_size_scale = ttk.Scale(params_frame, from_=10, to=50, orient=tk.HORIZONTAL,
+                                        variable=self.grid_size_var, command=self.update_grid_size_label)
+        self.grid_size_scale.grid(row=6, column=1, sticky=(tk.W, tk.E), padx=5)
+        self.grid_size_label = ttk.Label(params_frame, text="25", width=5)
+        self.grid_size_label.grid(row=6, column=2)
+        self.grid_size_scale.config(state=tk.DISABLED)  # Désactivé par défaut
+        
         # === Section Presets ===
         preset_frame = ttk.LabelFrame(main_frame, text="🎨 Presets", padding="10")
         preset_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5, padx=5)
@@ -140,6 +155,28 @@ class PolyGenGUI:
     def update_sensitivity_label(self, value):
         """Met à jour le label de sensibilité"""
         self.sensitivity_label.config(text=str(int(float(value))))
+    
+    def update_grid_size_label(self, value):
+        """Met à jour le label de taille de grille"""
+        self.grid_size_label.config(text=str(int(float(value))))
+    
+    def toggle_hybrid_options(self):
+        """Active/désactive les options du mode hybride"""
+        if self.hybrid_var.get():
+            # Activer les sliders du mode classique
+            self.points_scale.config(state=tk.DISABLED)
+            self.blur_scale.config(state=tk.DISABLED)
+            self.sensitivity_scale.config(state=tk.DISABLED)
+            # Activer le slider du mode hybride
+            self.grid_size_scale.config(state=tk.NORMAL)
+        else:
+            # Réactiver les sliders du mode classique
+            self.points_scale.config(state=tk.NORMAL)
+            self.blur_scale.config(state=tk.NORMAL)
+            self.sensitivity_scale.config(state=tk.NORMAL)
+            # Désactiver le slider du mode hybride
+            self.grid_size_scale.config(state=tk.DISABLED)
+    
     
     def load_image(self):
         """Charge une image"""
@@ -199,18 +236,29 @@ class PolyGenGUI:
         self.root.update()
         
         try:
-            self.generator = LowPolyGenerator(
-                self.current_image_path,
-                num_points=int(self.points_var.get()),
-                blur_strength=int(self.blur_var.get()),
-                enhance_colors=self.enhance_var.get(),
-                edge_sensitivity=int(self.sensitivity_var.get())
-            )
-            
-            self.current_image = self.generator.generate(
-                use_edge_detection=True,
-                add_outlines=self.outlines_var.get()
-            )
+            # Mode hybride
+            if self.hybrid_var.get():
+                hybrid_gen = HybridLowPolyGenerator(
+                    self.current_image_path,
+                    enable_shape_mixing=True
+                )
+                self.current_image = hybrid_gen.generate_hybrid(
+                    grid_size=int(self.grid_size_var.get())
+                )
+            # Mode classique
+            else:
+                self.generator = LowPolyGenerator(
+                    self.current_image_path,
+                    num_points=int(self.points_var.get()),
+                    blur_strength=int(self.blur_var.get()),
+                    enhance_colors=self.enhance_var.get(),
+                    edge_sensitivity=int(self.sensitivity_var.get())
+                )
+                
+                self.current_image = self.generator.generate(
+                    use_edge_detection=True,
+                    add_outlines=self.outlines_var.get()
+                )
             
             # Afficher le résultat
             self.display_preview_pil(self.current_image)

@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from src.low_poly import LowPolyGenerator
 from src.svg_export import SVGExporter
+from src.advanced_shapes import HybridLowPolyGenerator
 
 
 def main():
@@ -72,6 +73,19 @@ def main():
         help="Exporter en SVG vectoriel au lieu de PNG"
     )
     
+    parser.add_argument(
+        "--hybrid",
+        action="store_true",
+        help="Utiliser des formes géométriques mixtes (carrés, hexagones, etc.) au lieu de seulement des triangles"
+    )
+    
+    parser.add_argument(
+        "--grid-size",
+        type=int,
+        default=25,
+        help="Taille de la grille pour le mode hybride en pixels (défaut: 25)"
+    )
+    
     args = parser.parse_args()
     
     # Vérifier que l'image d'entrée existe
@@ -84,54 +98,69 @@ def main():
         args.output = "data/output/output.png"
     
     print(f"📸 Chargement: {args.input}")
-    print(f"⚙️  Paramètres: {args.points} points, flou={args.blur}")
+    if args.hybrid:
+        print(f"⚙️  Mode: HYBRIDE (formes mixtes)")
+        print(f"⚙️  Paramètres: grid_size={args.grid_size}px")
+    else:
+        print(f"⚙️  Paramètres: {args.points} points, flou={args.blur}")
     
     try:
-        # Créer le générateur
-        generator = LowPolyGenerator(
-            args.input,
-            num_points=args.points,
-            blur_strength=args.blur,
-            enhance_colors=not args.no_enhance,
-            edge_sensitivity=args.sensitivity
-        )
-        
-        # Export SVG ou PNG
-        if args.svg:
-            print("🎨 Génération SVG vectoriel...")
-            import cv2
-            
-            # Préparer l'image
-            smoothed = generator.smooth_image()
-            if not args.no_enhance:
-                smoothed_rgb = cv2.cvtColor(smoothed, cv2.COLOR_BGR2RGB)
-                smoothed_rgb = generator.enhance_color_image(smoothed_rgb)
-                smoothed = cv2.cvtColor(smoothed_rgb, cv2.COLOR_RGB2BGR)
-            
-            # Générer triangulation
-            points = generator.generate_points(use_edges=not args.no_edges)
-            tri = generator.triangulate(points)
-            
-            # Créer l'exporteur SVG
-            exporter = SVGExporter(generator.width, generator.height)
-            
-            # Ajouter les triangles
-            for triangle_indices in tri.simplices:
-                tri_points = points[triangle_indices]
-                color = generator.get_triangle_color(triangle_indices, points, smoothed)
-                outline = (0, 0, 0) if not args.no_outlines else None
-                exporter.add_triangle(tri_points, color, outline, 1)
+        # Mode hybride avec formes géométriques mixtes
+        if args.hybrid:
+            print("🎨 Génération avec formes géométriques mixtes...")
+            hybrid_gen = HybridLowPolyGenerator(args.input, enable_shape_mixing=True)
+            image = hybrid_gen.generate_hybrid(grid_size=args.grid_size)
             
             # Sauvegarder
-            exporter.save(args.output)
-            print(f"✅ Succès! SVG généré: {args.output}")
+            image.save(args.output)
+            print(f"✅ Succès! Image sauvegardée: {args.output}")
+        # Mode classique avec triangles
         else:
-            print("🎨 Génération de l'image low poly...")
-            image = generator.generate(
-                use_edge_detection=not args.no_edges,
-                add_outlines=not args.no_outlines
+            # Créer le générateur
+            generator = LowPolyGenerator(
+                args.input,
+                num_points=args.points,
+                blur_strength=args.blur,
+                enhance_colors=not args.no_enhance,
+                edge_sensitivity=args.sensitivity
             )
             
+            # Export SVG ou PNG
+            if args.svg:
+                print("🎨 Génération SVG vectoriel...")
+                import cv2
+                
+                # Préparer l'image
+                smoothed = generator.smooth_image()
+                if not args.no_enhance:
+                    smoothed_rgb = cv2.cvtColor(smoothed, cv2.COLOR_BGR2RGB)
+                    smoothed_rgb = generator.enhance_color_image(smoothed_rgb)
+                    smoothed = cv2.cvtColor(smoothed_rgb, cv2.COLOR_RGB2BGR)
+                
+                # Générer triangulation
+                points = generator.generate_points(use_edges=not args.no_edges)
+                tri = generator.triangulate(points)
+                
+                # Créer l'exporteur SVG
+                exporter = SVGExporter(generator.width, generator.height)
+                
+                # Ajouter les triangles
+                for triangle_indices in tri.simplices:
+                    tri_points = points[triangle_indices]
+                    color = generator.get_triangle_color(triangle_indices, points, smoothed)
+                    outline = (0, 0, 0) if not args.no_outlines else None
+                    exporter.add_triangle(tri_points, color, outline, 1)
+                
+                # Sauvegarder
+                exporter.save(args.output)
+                print(f"✅ Succès! SVG généré: {args.output}")
+            else:
+                print("🎨 Génération de l'image low poly...")
+                image = generator.generate(
+                    use_edge_detection=not args.no_edges,
+                    add_outlines=not args.no_outlines
+                )
+                
             # Sauvegarder
             generator.save(args.output, image)
             print(f"✅ Succès! Image sauvegardée: {args.output}")
