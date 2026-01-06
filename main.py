@@ -8,6 +8,7 @@ from pathlib import Path
 from src.low_poly import LowPolyGenerator
 from src.svg_export import SVGExporter
 from src.advanced_shapes import HybridLowPolyGenerator
+from src.batch_processor import batch_process_cli
 
 
 def main():
@@ -86,9 +87,37 @@ def main():
         help="Taille de la grille pour le mode hybride en pixels (défaut: 25)"
     )
     
+    parser.add_argument(
+        "--batch",
+        action="store_true",
+        help="Mode traitement par lots (batch mode) - traite toutes les images d'un dossier"
+    )
+    
+    parser.add_argument(
+        "-d", "--output-dir",
+        type=str,
+        default="data/output",
+        help="Dossier de sortie pour le mode batch (défaut: data/output)"
+    )
+    
     args = parser.parse_args()
     
-    # Vérifier que l'image d'entrée existe
+    # Mode traitement par lots (batch)
+    if args.batch:
+        exit_code = batch_process_cli(
+            input_dir=args.input,
+            output_dir=args.output_dir,
+            hybrid=args.hybrid,
+            grid_size=args.grid_size,
+            num_points=args.points,
+            blur_strength=args.blur,
+            sensitivity=args.sensitivity,
+            enhance=not args.no_enhance,
+            outlines=not args.no_outlines
+        )
+        sys.exit(exit_code)
+    
+    # Mode standard (image unique)
     if not Path(args.input).exists():
         print(f"Erreur: Le fichier {args.input} n'existe pas")
         sys.exit(1)
