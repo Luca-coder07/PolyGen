@@ -36,8 +36,8 @@ def main():
     parser.add_argument(
         "-b", "--blur",
         type=int,
-        default=15,
-        help="Force du flou (par défaut: 15)"
+        default=18,
+        help="Force du flou (par défaut: 18)"
     )
     
     parser.add_argument(
@@ -50,6 +50,19 @@ def main():
         "--no-edges",
         action="store_true",
         help="Ignorer la détection des contours"
+    )
+    
+    parser.add_argument(
+        "--no-enhance",
+        action="store_true",
+        help="Ne pas améliorer les couleurs (saturation/contraste)"
+    )
+    
+    parser.add_argument(
+        "-s", "--sensitivity",
+        type=int,
+        default=2,
+        help="Sensibilité de détection des contours 1-5 (défaut: 2)"
     )
     
     args = parser.parse_args()
@@ -71,7 +84,9 @@ def main():
         generator = LowPolyGenerator(
             args.input,
             num_points=args.points,
-            blur_strength=args.blur
+            blur_strength=args.blur,
+            enhance_colors=not args.no_enhance,
+            edge_sensitivity=args.sensitivity
         )
         
         # Générer l'image
