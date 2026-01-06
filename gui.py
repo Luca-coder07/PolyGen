@@ -11,19 +11,23 @@ import os
 from pathlib import Path
 from src.low_poly import LowPolyGenerator
 from src.advanced_shapes import HybridLowPolyGenerator
+from src.preset_manager import get_preset_manager, Preset
 
 
 class PolyGenGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("PolyGen - Low Poly Cartoon Generator")
-        self.root.geometry("1200x800")
+        self.root.geometry("1200x850")
         self.root.configure(bg="#f0f0f0")
         
         # Variables
         self.current_image_path = None
         self.generator = None
         self.is_generating = False
+        
+        # Gestionnaire de presets
+        self.preset_manager = get_preset_manager()
         
         # Créer l'interface
         self.create_widgets()
@@ -100,20 +104,27 @@ class PolyGenGUI:
         self.grid_size_scale.config(state=tk.DISABLED)  # Désactivé par défaut
         
         # === Section Presets ===
-        preset_frame = ttk.LabelFrame(main_frame, text="🎨 Presets", padding="10")
+        preset_frame = ttk.LabelFrame(main_frame, text="🎨 Presets (Prédéfinis et Personnalisés)", padding="10")
         preset_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5, padx=5)
         
-        presets = [
-            ("Équilibré", {"points": 1000, "blur": 18, "sensitivity": 2, "outlines": True, "enhance": True}),
-            ("Artistique", {"points": 800, "blur": 25, "sensitivity": 1, "outlines": True, "enhance": True}),
-            ("Détaillé", {"points": 1800, "blur": 12, "sensitivity": 3, "outlines": False, "enhance": True}),
-            ("Expressif", {"points": 1200, "blur": 20, "sensitivity": 3, "outlines": True, "enhance": True}),
-            ("Minimaliste", {"points": 500, "blur": 28, "sensitivity": 1, "outlines": True, "enhance": True}),
-        ]
+        # Sélecteur de preset
+        ttk.Label(preset_frame, text="Charger:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.preset_names = self.preset_manager.get_all_names()
+        self.preset_selector = ttk.Combobox(preset_frame, values=self.preset_names, state="readonly", width=20)
+        self.preset_selector.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=5)
+        self.preset_selector.current(0)  # Sélectionner le premier par défaut
+        self.preset_selector.bind("<<ComboboxSelected>>", lambda e: self.load_selected_preset())
         
-        for i, (name, params) in enumerate(presets):
-            ttk.Button(preset_frame, text=name, 
-                      command=lambda p=params: self.apply_preset(p)).grid(row=i, column=0, sticky=(tk.W, tk.E), pady=2)
+        # Boutons de gestion des presets
+        ttk.Button(preset_frame, text="⬇️ Charger", command=self.load_selected_preset).grid(row=1, column=0, sticky=(tk.W, tk.E), padx=2, pady=2)
+        ttk.Button(preset_frame, text="💾 Sauvegarder", command=self.save_current_preset).grid(row=1, column=1, sticky=(tk.W, tk.E), padx=2, pady=2)
+        
+        ttk.Button(preset_frame, text="🔄 Renommer", command=self.rename_preset).grid(row=2, column=0, sticky=(tk.W, tk.E), padx=2, pady=2)
+        ttk.Button(preset_frame, text="🗑️ Supprimer", command=self.delete_preset).grid(row=2, column=1, sticky=(tk.W, tk.E), padx=2, pady=2)
+        
+        ttk.Button(preset_frame, text="📋 Liste", command=self.show_presets_list).grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=2, pady=2)
+        
+        preset_frame.columnconfigure(1, weight=1)
         
         # === Section Actions ===
         action_frame = ttk.LabelFrame(main_frame, text="▶️ Actions", padding="10")
@@ -206,12 +217,206 @@ class PolyGenGUI:
             self.status_var.set(f"Erreur affichage aperçu: {e}")
     
     def apply_preset(self, params):
-        """Applique un preset de paramètres"""
-        self.points_var.set(params["points"])
-        self.blur_var.set(params["blur"])
-        self.sensitivity_var.set(params["sensitivity"])
-        self.outlines_var.set(params["outlines"])
-        self.enhance_var.set(params["enhance"])
+        """Applique un preset de paramètres (format ancien pour compatibilité)"""
+        self.points_var.set(params.get("points", 1000))
+        self.blur_var.set(params.get("blur", 18))
+        self.sensitivity_var.set(params.get("sensitivity", 2))
+        self.outlines_var.set(params.get("outlines", True))
+        self.enhance_var.set(params.get("enhance", True))
+    
+    def load_selected_preset(self):
+        """Charge le preset sélectionné dans le combobox"""
+        preset_name = self.preset_selector.get()
+        if not preset_name:
+            return
+        
+        preset = self.preset_manager.load_preset(preset_name)
+        if not preset:
+            messagebox.showerror("Erreur", f"Impossible de charger le preset '{preset_name}'")
+            return
+        
+        # Appliquer le preset
+        if preset.mode == "hybrid":
+            self.hybrid_var.set(True)
+            self.grid_size_var.set(preset.grid_size)
+            self.toggle_hybrid_options()
+        else:
+            self.hybrid_var.set(False)
+            self.points_var.set(preset.points)
+            self.blur_var.set(preset.blur_strength)
+            self.sensitivity_var.set(preset.edge_sensitivity)
+            self.toggle_hybrid_options()
+        
+        self.outlines_var.set(preset.add_outlines)
+        self.enhance_var.set(preset.enhance_colors)
+        
+        self.status_var.set(f"✅ Preset chargé: {preset_name}")
+    
+    def save_current_preset(self):
+        """Sauvegarde les paramètres actuels comme preset"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Sauvegarder un nouveau preset")
+        dialog.geometry("400x150")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        ttk.Label(dialog, text="Nom du preset:").pack(pady=5)
+        name_entry = ttk.Entry(dialog, width=40)
+        name_entry.pack(pady=5, padx=20)
+        name_entry.focus()
+        
+        ttk.Label(dialog, text="Description (optionnel):").pack(pady=5)
+        desc_entry = ttk.Entry(dialog, width=40)
+        desc_entry.pack(pady=5, padx=20)
+        
+        def save():
+            name = name_entry.get().strip()
+            if not name:
+                messagebox.showwarning("Erreur", "Le nom du preset est requis")
+                return
+            
+            if name in self.preset_manager.presets:
+                if not messagebox.askyesno("Confirmer", f"Le preset '{name}' existe déjà. Le remplacer?"):
+                    return
+            
+            # Créer le preset
+            preset = Preset(
+                name=name,
+                description=desc_entry.get().strip(),
+                mode="hybrid" if self.hybrid_var.get() else "classic",
+                points=int(self.points_var.get()),
+                blur_strength=int(self.blur_var.get()),
+                edge_sensitivity=int(self.sensitivity_var.get()),
+                enhance_colors=self.enhance_var.get(),
+                add_outlines=self.outlines_var.get(),
+                grid_size=int(self.grid_size_var.get())
+            )
+            
+            # Sauvegarder
+            if self.preset_manager.save_preset(preset):
+                messagebox.showinfo("Succès", f"Preset '{name}' sauvegardé avec succès!")
+                
+                # Mettre à jour le combobox
+                self.preset_names = self.preset_manager.get_all_names()
+                self.preset_selector['values'] = self.preset_names
+                self.preset_selector.set(name)
+                
+                self.status_var.set(f"✅ Preset sauvegardé: {name}")
+                dialog.destroy()
+            else:
+                messagebox.showerror("Erreur", "Impossible de sauvegarder le preset")
+        
+        ttk.Button(dialog, text="Sauvegarder", command=save).pack(pady=10)
+    
+    def rename_preset(self):
+        """Renomme le preset sélectionné"""
+        old_name = self.preset_selector.get()
+        if not old_name:
+            messagebox.showwarning("Erreur", "Sélectionnez un preset à renommer")
+            return
+        
+        dialog = tk.Toplevel(self.root)
+        dialog.title(f"Renommer '{old_name}'")
+        dialog.geometry("400x100")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        ttk.Label(dialog, text="Nouveau nom:").pack(pady=5)
+        name_entry = ttk.Entry(dialog, width=40)
+        name_entry.pack(pady=5, padx=20)
+        name_entry.insert(0, old_name)
+        name_entry.focus()
+        
+        def rename():
+            new_name = name_entry.get().strip()
+            if not new_name:
+                messagebox.showwarning("Erreur", "Le nom ne peut pas être vide")
+                return
+            
+            if self.preset_manager.rename_preset(old_name, new_name):
+                messagebox.showinfo("Succès", f"Preset renommé en '{new_name}'")
+                
+                # Mettre à jour le combobox
+                self.preset_names = self.preset_manager.get_all_names()
+                self.preset_selector['values'] = self.preset_names
+                self.preset_selector.set(new_name)
+                
+                self.status_var.set(f"✅ Preset renommé: {new_name}")
+                dialog.destroy()
+            else:
+                messagebox.showerror("Erreur", "Impossible de renommer le preset")
+        
+        ttk.Button(dialog, text="Renommer", command=rename).pack(pady=10)
+    
+    def delete_preset(self):
+        """Supprime le preset sélectionné"""
+        preset_name = self.preset_selector.get()
+        if not preset_name:
+            messagebox.showwarning("Erreur", "Sélectionnez un preset à supprimer")
+            return
+        
+        if messagebox.askyesno("Confirmer", f"Êtes-vous sûr de vouloir supprimer '{preset_name}'?"):
+            if self.preset_manager.delete_preset(preset_name):
+                messagebox.showinfo("Succès", f"Preset '{preset_name}' supprimé")
+                
+                # Mettre à jour le combobox
+                self.preset_names = self.preset_manager.get_all_names()
+                self.preset_selector['values'] = self.preset_names
+                if self.preset_names:
+                    self.preset_selector.current(0)
+                
+                self.status_var.set(f"✅ Preset supprimé: {preset_name}")
+            else:
+                messagebox.showerror("Erreur", "Impossible de supprimer ce preset")
+    
+    def show_presets_list(self):
+        """Affiche la liste de tous les presets"""
+        presets = self.preset_manager.list_presets()
+        
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Liste des presets")
+        dialog.geometry("600x400")
+        dialog.transient(self.root)
+        
+        # Text widget avec scrollbar
+        frame = ttk.Frame(dialog)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        scrollbar = ttk.Scrollbar(frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        text = tk.Text(frame, yscrollcommand=scrollbar.set, height=20, width=70)
+        text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=text.yview)
+        
+        # Afficher les presets
+        text.insert(tk.END, "═" * 65 + "\n")
+        text.insert(tk.END, "PRESETS DISPONIBLES\n")
+        text.insert(tk.END, "═" * 65 + "\n\n")
+        
+        classic = [p for p in presets if p.mode == "classic"]
+        hybrid = [p for p in presets if p.mode == "hybrid"]
+        
+        if classic:
+            text.insert(tk.END, "MODE CLASSIQUE:\n")
+            text.insert(tk.END, "─" * 65 + "\n")
+            for p in classic:
+                text.insert(tk.END, f"{p.name:20} | pts={p.points:4} blur={p.blur_strength:2} sens={p.edge_sensitivity}\n")
+                if p.description:
+                    text.insert(tk.END, f"  → {p.description}\n")
+            text.insert(tk.END, "\n")
+        
+        if hybrid:
+            text.insert(tk.END, "MODE HYBRIDE:\n")
+            text.insert(tk.END, "─" * 65 + "\n")
+            for p in hybrid:
+                text.insert(tk.END, f"{p.name:20} | grid={p.grid_size:2}px\n")
+                if p.description:
+                    text.insert(tk.END, f"  → {p.description}\n")
+        
+        text.config(state=tk.DISABLED)
+        
+        ttk.Button(dialog, text="Fermer", command=dialog.destroy).pack(pady=10)
     
     def generate_image(self):
         """Génère l'image low poly"""

@@ -9,6 +9,7 @@ from src.low_poly import LowPolyGenerator
 from src.svg_export import SVGExporter
 from src.advanced_shapes import HybridLowPolyGenerator
 from src.batch_processor import batch_process_cli
+from src.preset_manager import get_preset_manager, Preset
 
 
 def main():
@@ -19,6 +20,8 @@ def main():
     parser.add_argument(
         "input",
         type=str,
+        nargs="?",
+        default=None,
         help="Chemin vers l'image d'entrée"
     )
     
@@ -100,10 +103,89 @@ def main():
         help="Dossier de sortie pour le mode batch (défaut: data/output)"
     )
     
+    parser.add_argument(
+        "--list-presets",
+        action="store_true",
+        help="Affiche la liste de tous les presets disponibles"
+    )
+    
+    parser.add_argument(
+        "--load-preset",
+        type=str,
+        metavar="NAME",
+        help="Charge un preset et l'utilise pour la génération"
+    )
+    
+    parser.add_argument(
+        "--save-preset",
+        type=str,
+        metavar="NAME",
+        help="Sauvegarde les paramètres actuels comme un nouveau preset"
+    )
+    
+    parser.add_argument(
+        "--preset-description",
+        type=str,
+        default="",
+        help="Description pour le preset à sauvegarder (à utiliser avec --save-preset)"
+    )
+    
     args = parser.parse_args()
+    
+    # Gestion des commandes de presets
+    preset_manager = get_preset_manager()
+    
+    # Afficher la liste des presets
+    if args.list_presets:
+        preset_manager.print_summary()
+        sys.exit(0)
+    
+    # Sauvegarder un preset
+    if args.save_preset:
+        preset = Preset(
+            name=args.save_preset,
+            description=args.preset_description,
+            mode="hybrid" if args.hybrid else "classic",
+            points=args.points,
+            blur_strength=args.blur,
+            edge_sensitivity=args.sensitivity,
+            enhance_colors=not args.no_enhance,
+            add_outlines=not args.no_outlines,
+            grid_size=args.grid_size
+        )
+        
+        if preset_manager.save_preset(preset):
+            print(f"✅ Preset '{args.save_preset}' sauvegardé avec succès!")
+        else:
+            print(f"❌ Erreur en sauvegardant le preset")
+            sys.exit(1)
+        
+        sys.exit(0)
+    
+    # Charger un preset
+    if args.load_preset:
+        preset = preset_manager.load_preset(args.load_preset)
+        if not preset:
+            print(f"❌ Preset '{args.load_preset}' introuvable")
+            sys.exit(1)
+        
+        # Utiliser les paramètres du preset
+        args.hybrid = (preset.mode == "hybrid")
+        args.points = preset.points
+        args.blur = preset.blur_strength
+        args.sensitivity = preset.edge_sensitivity
+        args.grid_size = preset.grid_size
+        args.no_enhance = not preset.enhance_colors
+        args.no_outlines = not preset.add_outlines
+        
+        print(f"✅ Preset '{args.load_preset}' chargé")
     
     # Mode traitement par lots (batch)
     if args.batch:
+        if not args.input:
+            print("❌ Erreur: L'argument 'input' (dossier) est requis en mode batch")
+            sys.exit(1)
+        
         exit_code = batch_process_cli(
             input_dir=args.input,
             output_dir=args.output_dir,
@@ -118,6 +200,10 @@ def main():
         sys.exit(exit_code)
     
     # Mode standard (image unique)
+    if not args.input:
+        print("❌ Erreur: L'argument 'input' (image) est requis")
+        sys.exit(1)
+    
     if not Path(args.input).exists():
         print(f"Erreur: Le fichier {args.input} n'existe pas")
         sys.exit(1)
